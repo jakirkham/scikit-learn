@@ -375,16 +375,18 @@ def _update_dict(dictionary, Y, code, verbose=False, return_r2=False,
     random_state = check_random_state(random_state)
     # Get BLAS functions
     gemm, = linalg.get_blas_funcs(('gemm',), (dictionary, code, Y))
-    ger, = linalg.get_blas_funcs(('ger',), (dictionary, code))
     # Residuals, computed with BLAS for speed and efficiency
     # R <- -1.0 * U * V^T + 1.0 * Y
     R = gemm(-1.0, dictionary, code, 1.0, Y)
+    # R <- 1.0 * U * V^T + R
+    R = gemm(1.0, dictionary, code, 1.0, R, overwrite_c=True)
+    # U <- 1.0 * R * V^T
+    dictionary = gemm(1.0, R, code, 0.0, dictionary,
+                      trans_b=True, overwrite_c=True)
+    if positive:
+        dictionary[dictionary < 0] = 0.0
+
     for k in range(n_components):
-        # R <- 1.0 * U_k * V_k^T + R
-        R = ger(1.0, dictionary[:, k], code[k, :], a=R, overwrite_a=True)
-        dictionary[:, k] = np.dot(R, code[k, :].T)
-        if positive:
-            dictionary[:, k][dictionary[:, k] < 0] = 0.0
         # Scale k'th atom
         atom_norm_square = np.dot(dictionary[:, k], dictionary[:, k])
         if atom_norm_square < 1e-20:
@@ -402,8 +404,10 @@ def _update_dict(dictionary, Y, code, verbose=False, return_r2=False,
                                             dictionary[:, k]))
         else:
             dictionary[:, k] /= sqrt(atom_norm_square)
-            # R <- -1.0 * U_k * V_k^T + R
-            R = ger(-1.0, dictionary[:, k], code[k, :], a=R, overwrite_a=True)
+
+    # R <- -1.0 * U * V^T + 1.0 * Y
+    R = gemm(-1.0, dictionary, code, 1.0, R, overwrite_c=True)
+
     if return_r2:
         R **= 2
         # R is fortran-ordered. For numpy version < 1.6, sum does not
