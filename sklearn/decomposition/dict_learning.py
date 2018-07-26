@@ -779,6 +779,7 @@ def dict_learning_online(X, n_components=2, alpha=1, n_iter=100,
 
         this_code = sparse_encode(this_X, dictionary.T, algorithm=method,
                                   alpha=alpha, n_jobs=n_jobs,
+                                  check_input=False,
                                   positive=code_positive).T
 
         # Update the auxiliary variables
