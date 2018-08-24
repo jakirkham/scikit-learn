@@ -139,18 +139,6 @@ void cblas_dgemm(const enum CBLAS_ORDER Order,
       return;
    }
 #endif
-/*
- * Call SYRK when that's what the user is actually asking for; just handle
- * beta=0, because beta=X requires we copy C and then subtract to preserve
- * asymmetry
- */
-   if (A == B && M == N && TA != TB && lda == ldb && beta == 0.0)
-   {
-      ATL_dsyrk(CblasUpper, (Order == CblasColMajor) ? TA : TB, N, K,
-                alpha, A, lda, beta, C, ldc);
-      ATL_dsyreflect(CblasUpper, N, C, ldc);
-      return;
-   }
    if (Order == CblasColMajor)
       ATL_dgemm(TA, TB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
    else
